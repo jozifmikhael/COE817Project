@@ -9,10 +9,13 @@ import java.security.PublicKey;
 import java.security.SecureRandom;
 import java.security.PrivateKey;
 import java.security.KeyPair;
+import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.KeyFactory;
 import java.security.KeyPairGenerator;
 import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.KeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Base64;
 import java.util.Date;
@@ -26,6 +29,9 @@ import javax.crypto.NoSuchPaddingException;
 import javax.crypto.SecretKey;
 import javax.crypto.SecretKeyFactory;
 import javax.crypto.spec.DESKeySpec;
+import javax.crypto.spec.IvParameterSpec;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 
 
 public class Client {
@@ -39,7 +45,7 @@ public class Client {
 		KeyPairGenerator keyPairGen_A;
         int Socket_Port = 10001;                     
         String IDa = "Initiator A";
-        String sessionKey; //= "ARANDOMEVALUE";
+        String sessionKey;
         
         System.out.println("====================");
         System.out.println("| Payment Terminal |");
@@ -94,11 +100,29 @@ public class Client {
             random.nextBytes(bytes);
             //Encoder encoder = Base64.getEncoder().withoutPadding();
             sessionKey = Base64.getEncoder().encodeToString(bytes);
-            System.out.println(sessionKey);
             
+            IvParameterSpec ivParameterSpec = new IvParameterSpec(new byte[16]);
+            String iv = ivParameterSpec.toString();
+            
+            byte[] salt = new byte[10];
+            random.nextBytes(salt);
+            String saltString = Base64.getEncoder().encodeToString(salt);
+            
+            char[] charSessionKey = new char[sessionKey.length()];
+            System.out.println("Session Key: "+ sessionKey);
+            System.out.println("Salt: "+ saltString);
+            System.out.println("iv: "+ ivParameterSpec);
+            
+            byte[] ivByte = c_rCipher.doFinal(iv.getBytes("UTF-8"));
             byte[] SeshKey_ByteCode = c_rCipher.doFinal(sessionKey.getBytes("UTF-8"));
+            byte[] saltByteCode = c_rCipher.doFinal(saltString.getBytes("UTF-8"));
             String enc_SKByteCode = Base64.getEncoder().encodeToString(SeshKey_ByteCode);
+            String enc_saltByteCode = Base64.getEncoder().encodeToString(saltByteCode);
+            String enc_ivByteCode = Base64.getEncoder().encodeToString(ivByte);
+            
             printStr.println(enc_SKByteCode);
+            printStr.println(enc_saltByteCode);
+            printStr.println(enc_ivByteCode);
             
             System.out.println("Please Enter your Credit Card Information Below: \n");
             
@@ -114,14 +138,21 @@ public class Client {
             System.out.println("3 Digit CVV: ");            
             String cardCVV = userInput.nextLine();  
             
-            SecretKeyFactory SecKey_F2 = SecretKeyFactory.getInstance("DES");
-            DESKeySpec KeyDES_Bytes2 = new DESKeySpec(sessionKey.getBytes());
-            SecretKey SecKey_gen2 = SecKey_F2.generateSecret(KeyDES_Bytes2);
             
-            String enc_cardHolderName = encrypt(cardHolderName, SecKey_gen2);
-            String enc_cardNumber = encrypt(cardNumber, SecKey_gen2);
-            String enc_cardExp = encrypt(cardExp, SecKey_gen2);
-            String enc_cardCVV = encrypt(cardCVV, SecKey_gen2);
+            
+//            SecretKeyFactory SecKey_F2 = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
+//            KeySpec spec = new PBEKeySpec(charSessionKey,salt, 65536, 256);
+//            //DESKeySpec KeyDES_Bytes2 = new DESKeySpec(sessionKey.getBytes());
+//            SecretKey tmp = SecKey_F2.generateSecret(spec);
+//            SecretKey SecKey_gen2 = new SecretKeySpec(tmp.getEncoded(), "AES");
+//            System.out.println("Secret Key: "+SecKey_gen2);
+            SecretKey SecKey_gen2 = getKeyFromPassword(sessionKey, saltString);
+
+            String enc_cardHolderName = encrypt(cardHolderName, SecKey_gen2, ivParameterSpec);
+            String enc_cardNumber = encrypt(cardNumber, SecKey_gen2, ivParameterSpec);
+            String enc_cardExp = encrypt(cardExp, SecKey_gen2, ivParameterSpec);
+            String enc_cardCVV = encrypt(cardCVV, SecKey_gen2, ivParameterSpec);
+            System.out.println("encrypted");
             
             printStr.println(enc_cardHolderName); 
             printStr.println(enc_cardNumber);
@@ -130,18 +161,56 @@ public class Client {
                                     
             System.out.println("Credit Card Information has been Securely Transmitted to Seller");
             
-        } catch (Exception e){
-            System.out.println(e.getMessage());
-        }
+        } catch (IOException i) {
+            System.out.println(i);
+        } catch (NoSuchAlgorithmException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (IllegalBlockSizeException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (BadPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidKeyException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (NoSuchPaddingException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidKeySpecException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} catch (InvalidAlgorithmParameterException e) {
+			// TODO Auto-generated catch block
+			e.printStackTrace();
+		} 
 	}
 	
-	public static String encrypt(String encryptedMessage, SecretKey SecKey_gen) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, UnsupportedEncodingException {
-		Cipher DES_Cipher2 = Cipher.getInstance("DES/ECB/PKCS5Padding");
-        DES_Cipher2.init(Cipher.ENCRYPT_MODE, SecKey_gen);            
-        
+	public static SecretKey getKeyFromPassword(String password, String salt)
+		    throws NoSuchAlgorithmException, InvalidKeySpecException {
+		    
+		    SecretKeyFactory factory = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA256");
+		    KeySpec spec = new PBEKeySpec(password.toCharArray(), salt.getBytes(), 65536, 256);
+		    SecretKey secret = new SecretKeySpec(factory.generateSecret(spec)
+		        .getEncoded(), "AES");
+		    return secret;
+	}
+	
+	public static IvParameterSpec generateIv() {
+	    byte[] iv = new byte[16];
+	    new SecureRandom().nextBytes(iv);
+	    return new IvParameterSpec(iv);
+	}
+	
+	public static String encrypt(String encryptedMessage, SecretKey SecKey_gen, IvParameterSpec iv) throws NoSuchAlgorithmException, NoSuchPaddingException, InvalidKeyException, IllegalBlockSizeException, BadPaddingException, UnsupportedEncodingException, InvalidAlgorithmParameterException {
+		Cipher DES_Cipher2 = Cipher.getInstance("AES/CBC/PKCS5Padding");
+       
+		DES_Cipher2.init(Cipher.ENCRYPT_MODE, SecKey_gen, iv);              
         byte[] Msg_ByteCode = DES_Cipher2.doFinal(encryptedMessage.getBytes("UTF-8"));
         
         String enc_Msg = Base64.getEncoder().encodeToString(Msg_ByteCode);
+        
 		return enc_Msg;
 	}
 }
