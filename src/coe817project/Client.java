@@ -87,8 +87,6 @@ public class Client {
             byte[] nB_ByteCode = Base64.getDecoder().decode(B_Nonce);
             A_Nonce = new String(c_rCipher.doFinal(nA_ByteCode));
             B_Nonce = new String(c_rCipher.doFinal(nB_ByteCode));
-//            System.out.println("Nonce A: " + A_Nonce);
-//            System.out.println("Nonce B: " + B_Nonce);            
                      
             c_rCipher.init(Cipher.ENCRYPT_MODE, publicK_B);
             nB_ByteCode = c_rCipher.doFinal(B_Nonce.getBytes("UTF-8"));
@@ -98,7 +96,6 @@ public class Client {
             SecureRandom random = new SecureRandom();
             byte bytes[] = new byte[20];
             random.nextBytes(bytes);
-            //Encoder encoder = Base64.getEncoder().withoutPadding();
             sessionKey = Base64.getEncoder().encodeToString(bytes);
             
             IvParameterSpec ivParameterSpec = new IvParameterSpec(new byte[16]);
@@ -128,24 +125,19 @@ public class Client {
             
             System.out.println("Cardholder Name: ");
             String cardHolderName = userInput.nextLine();            
-                        
+            
             System.out.println("Credit Card Number: ");            
             String cardNumber = userInput.nextLine();  
+            isNumber(cardNumber);
             
             System.out.println("Expiry (MMYY): ");
             String cardExp = userInput.nextLine();            
-                        
+            isNumber(cardExp);    
+            
             System.out.println("3 Digit CVV: ");            
-            String cardCVV = userInput.nextLine();  
+            String cardCVV = userInput.nextLine();     
+            isNumber(cardCVV);
             
-            
-            
-//            SecretKeyFactory SecKey_F2 = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
-//            KeySpec spec = new PBEKeySpec(charSessionKey,salt, 65536, 256);
-//            //DESKeySpec KeyDES_Bytes2 = new DESKeySpec(sessionKey.getBytes());
-//            SecretKey tmp = SecKey_F2.generateSecret(spec);
-//            SecretKey SecKey_gen2 = new SecretKeySpec(tmp.getEncoded(), "AES");
-//            System.out.println("Secret Key: "+SecKey_gen2);
             SecretKey SecKey_gen2 = getKeyFromPassword(sessionKey, saltString);
 
             String enc_cardHolderName = encrypt(cardHolderName, SecKey_gen2, ivParameterSpec);
@@ -164,25 +156,18 @@ public class Client {
         } catch (IOException i) {
             System.out.println(i);
         } catch (NoSuchAlgorithmException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (IllegalBlockSizeException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (BadPaddingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (InvalidKeyException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (NoSuchPaddingException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (InvalidKeySpecException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} catch (InvalidAlgorithmParameterException e) {
-			// TODO Auto-generated catch block
 			e.printStackTrace();
 		} 
 	}
@@ -195,6 +180,17 @@ public class Client {
 		    SecretKey secret = new SecretKeySpec(factory.generateSecret(spec)
 		        .getEncoded(), "AES");
 		    return secret;
+	}
+	
+	public static boolean isNumber(String str) {
+		try {
+			double v = Double.parseDouble(str);
+			if(v>0)return true;
+			else return false;
+		} catch (NumberFormatException e) {	
+			System.out.println("Please enter positive integer values only.");
+			return false;
+		}
 	}
 	
 	public static IvParameterSpec generateIv() {

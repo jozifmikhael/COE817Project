@@ -122,13 +122,7 @@ public class Supervisor {
             
             String enc_cardCVV = clientIn.nextLine();
             System.out.println("Encrypted Credit Card CVV Code: " + enc_cardCVV);
-            
-//            SecretKeyFactory SecKey_F2 = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA1");
-//            KeySpec spec = new PBEKeySpec(charSessionKey,saltByte, 65536, 256);
-//            //            DESKeySpec KeyDES_Bytes = new DESKeySpec(sesh_KeyByteDecode.getBytes());
-//            SecretKey tmp = SecKey_F2.generateSecret(spec);
-//            SecretKey SecKey_gen = new SecretKeySpec(tmp.getEncoded(), "AES");
-//            System.out.println("Secret Key: "+SecKey_gen);
+
             SecretKey SecKey_gen = getKeyFromPassword(sesh_KeyByteDecode,saltString);
 
             String dec_Name = decrypt(enc_cardHolderName, SecKey_gen,ivParameterSpec);
@@ -141,30 +135,22 @@ public class Supervisor {
             System.out.println("Decrypted Expiry Date in MMYY: " + dec_Exp);
             System.out.println("Decrypted Credit Card CVV Code: " + dec_CVV);
             
-            
         }
      catch (IOException i) {
         System.out.println(i);
     } catch (NoSuchAlgorithmException e) {
-		// TODO Auto-generated catch block
 		e.printStackTrace();
 	} catch (IllegalBlockSizeException e) {
-		// TODO Auto-generated catch block
 		e.printStackTrace();
 	} catch (BadPaddingException e) {
-		// TODO Auto-generated catch block
 		e.printStackTrace();
 	} catch (InvalidKeyException e) {
-		// TODO Auto-generated catch block
 		e.printStackTrace();
 	} catch (NoSuchPaddingException e) {
-		// TODO Auto-generated catch block
 		e.printStackTrace();
 	} catch (InvalidKeySpecException e) {
-		// TODO Auto-generated catch block
 		e.printStackTrace();
 	} catch (InvalidAlgorithmParameterException e) {
-		// TODO Auto-generated catch block
 		e.printStackTrace();
 	}        
     }
